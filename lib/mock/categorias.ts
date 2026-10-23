@@ -1,0 +1,267 @@
+import type { Categoria } from "../types";
+
+const lista = (id: string, etiqueta: string, opciones: string[], requerido = true) => ({ id, etiqueta, tipo: "lista" as const, opciones, requerido });
+const texto = (id: string, etiqueta: string, requerido = false) => ({ id, etiqueta, tipo: "texto" as const, requerido });
+const numero = (id: string, etiqueta: string, sufijo?: string, requerido = false) => ({ id, etiqueta, tipo: "numero" as const, requerido, sufijo });
+
+export const CATEGORIAS: Categoria[] = [
+  {
+    id: "obra-negra",
+    nombre: "Obra negra",
+    icono: "BrickWall",
+    foto: "cem1",
+    sub: [
+      {
+        id: "cemento",
+        nombre: "Cemento y mortero",
+        unidades: ["bulto", "tonelada"],
+        fotos: ["cem1", "cem4", "cem2"],
+        campos: [
+          lista("tipo", "Tipo", ["Cemento gris", "Cemento blanco", "Mortero", "Cemento de albañilería"]),
+          lista("presentacion", "Presentación", ["25 kg", "50 kg"]),
+          texto("marca", "Marca"),
+        ],
+      },
+      {
+        id: "varilla",
+        nombre: "Varilla y acero",
+        unidades: ["pieza", "tonelada"],
+        fotos: ["reb1", "reb2", "reb4", "reb5"],
+        campos: [
+          lista("calibre", "Calibre", ['#2 (1/4")', '#3 (3/8")', '#4 (1/2")', '#5 (5/8")', '#6 (3/4")']),
+          lista("largo", "Largo", ["6 m", "12 m"]),
+          lista("grado", "Grado", ["Grado 42", "Grado 60"], false),
+        ],
+      },
+      {
+        id: "block",
+        nombre: "Block y tabique",
+        unidades: ["pieza", "millar"],
+        fotos: ["blk4", "whl2"],
+        campos: [
+          lista("tipo", "Tipo", ["Block hueco", "Block macizo", "Tabicón", "Tabique rojo"]),
+          lista("medida", "Medida (cm)", ["10x20x40", "12x20x40", "15x20x40", "7x14x28"]),
+        ],
+      },
+      {
+        id: "agregados",
+        nombre: "Arena, grava y piedra",
+        unidades: ["m³", "tonelada"],
+        fotos: ["grv1", "grv2", "grv3", "grv4"],
+        campos: [lista("material", "Material", ["Arena", 'Grava 3/4"', 'Grava 1/2"', "Piedra braza", "Tepetate"])],
+      },
+      {
+        id: "malla",
+        nombre: "Malla y alambre",
+        unidades: ["rollo", "hoja", "pieza", "kg"],
+        fotos: ["reb6", "reb3"],
+        campos: [lista("tipo", "Tipo", ["Malla electrosoldada 6x6", "Alambre recocido", "Armex para castillo", "Malla ciclónica"])],
+      },
+    ],
+  },
+  {
+    id: "acabados",
+    nombre: "Acabados",
+    icono: "PaintRoller",
+    foto: "til1",
+    sub: [
+      {
+        id: "pisos",
+        nombre: "Pisos, azulejo y teja",
+        unidades: ["m²", "caja", "pieza"],
+        fotos: ["til1", "til3", "til4", "til2"],
+        campos: [
+          lista("material", "Material", ["Cerámica", "Porcelanato", "Talavera", "Piedra", "Teja de barro"]),
+          texto("formato", "Formato", false),
+        ],
+      },
+      {
+        id: "pintura",
+        nombre: "Pintura e impermeabilizante",
+        unidades: ["cubeta", "galón", "litro"],
+        fotos: ["pnt1", "pnt2", "pnt3"],
+        campos: [
+          lista("tipo", "Tipo", ["Vinílica", "Esmalte", "Impermeabilizante acrílico", "Sellador"]),
+          texto("color", "Color"),
+        ],
+      },
+      {
+        id: "puertas",
+        nombre: "Puertas y ventanas",
+        unidades: ["pieza"],
+        fotos: ["dor3", "dor1", "dor2"],
+        campos: [lista("material", "Material", ["Madera", "Tambor", "Aluminio", "Herrería"]), texto("medida", "Medida", true)],
+      },
+      {
+        id: "banos",
+        nombre: "Muebles de baño",
+        unidades: ["pieza", "juego"],
+        fotos: ["snk2", "snk1"],
+        campos: [lista("tipo", "Tipo", ["WC", "Lavabo", "Regadera", "Tarja"])],
+      },
+    ],
+  },
+  {
+    id: "instalaciones",
+    nombre: "Instalaciones",
+    icono: "Wrench",
+    foto: "pip3",
+    sub: [
+      {
+        id: "tuberia",
+        nombre: "Tubería y conexiones",
+        unidades: ["tramo", "pieza"],
+        fotos: ["pip3", "pip2", "pip4", "pip6", "pip1"],
+        campos: [
+          lista("material", "Material", ["PVC sanitario", "PVC hidráulico", "CPVC", "Cobre", "Polietileno"]),
+          lista("diametro", "Diámetro", ['1/2"', '3/4"', '2"', '4"', '6"']),
+          lista("largo", "Largo", ["3 m", "6 m"], false),
+        ],
+      },
+      {
+        id: "electrico",
+        nombre: "Material eléctrico",
+        unidades: ["rollo", "pieza", "tramo", "caja"],
+        fotos: ["cab4", "cab1", "cab3", "cab2"],
+        campos: [lista("tipo", "Tipo", ["Cable THW", "Cable de uso rudo", "Centro de carga", "Tubo conduit"]), texto("calibre", "Calibre")],
+      },
+      {
+        id: "tinacos",
+        nombre: "Tinacos y cisternas",
+        unidades: ["pieza"],
+        fotos: ["tnk2", "tnk1", "tnk3"],
+        campos: [lista("tipo", "Tipo", ["Tinaco", "Cisterna"]), lista("capacidad", "Capacidad", ["450 L", "750 L", "1,100 L", "2,500 L", "5,000 L"])],
+      },
+    ],
+  },
+  {
+    id: "madera",
+    nombre: "Madera y cimbra",
+    icono: "Layers",
+    foto: "lum2",
+    sub: [
+      {
+        id: "triplay",
+        nombre: "Triplay y tableros",
+        unidades: ["hoja"],
+        fotos: ["ply2", "ply1", "ply3"],
+        campos: [lista("tipo", "Tipo", ["Triplay de pino", "Cimbraplay", "OSB", "MDF"]), lista("espesor", "Espesor", ["6 mm", "9 mm", "12 mm", "16 mm", "19 mm"])],
+      },
+      {
+        id: "polines",
+        nombre: "Polines, barrotes y duela",
+        unidades: ["pieza"],
+        fotos: ["lum3", "lum1", "lum4", "lum2"],
+        campos: [lista("tipo", "Tipo", ["Polín 4x4", "Barrote 2x4", "Duela 1x4", "Tabla 1x12"]), lista("largo", "Largo", ["8 pies", "10 pies", "12 pies", "16 pies"])],
+      },
+      {
+        id: "cimbra",
+        nombre: "Cimbra metálica",
+        unidades: ["pieza", "lote"],
+        fotos: ["scf3", "stl1"],
+        campos: [lista("tipo", "Tipo", ["Panel", "Puntal", "Viga", "Moño y separador"])],
+      },
+    ],
+  },
+  {
+    id: "herramienta",
+    nombre: "Herramienta",
+    icono: "Hammer",
+    foto: "too2",
+    sub: [
+      {
+        id: "electricas",
+        nombre: "Herramienta eléctrica",
+        unidades: ["pieza", "juego"],
+        fotos: ["too2", "too1", "too5", "too8", "too6"],
+        campos: [lista("tipo", "Tipo", ["Rotomartillo", "Esmeriladora", "Sierra circular", "Taladro", "Demoledor"]), texto("marca", "Marca")],
+      },
+      {
+        id: "manuales",
+        nombre: "Herramienta manual",
+        unidades: ["pieza", "juego"],
+        fotos: ["too3", "too4", "too7", "hw2"],
+        campos: [texto("contenido", "Qué incluye", true)],
+      },
+      {
+        id: "andamios",
+        nombre: "Andamios y escaleras",
+        unidades: ["cuerpo", "pieza", "lote"],
+        fotos: ["scf1", "scf2", "scf4"],
+        campos: [lista("tipo", "Tipo", ["Andamio tubular", "Escalera de tijera", "Escalera extensión"]), texto("altura", "Altura")],
+      },
+    ],
+  },
+  {
+    id: "maquinaria",
+    nombre: "Maquinaria y equipo",
+    icono: "Truck",
+    foto: "mix4",
+    sub: [
+      {
+        id: "revolvedoras",
+        nombre: "Revolvedoras",
+        unidades: ["pieza"],
+        fotos: ["mix1", "mix4", "mix2"],
+        campos: [lista("capacidad", "Capacidad", ["1 saco", "2 sacos"]), lista("motor", "Motor", ["Gasolina", "Eléctrico"]), numero("anio", "Año")],
+      },
+      {
+        id: "compactacion",
+        nombre: "Bailarinas y compactadoras",
+        unidades: ["pieza"],
+        fotos: ["exc1", "cmp1"],
+        campos: [lista("tipo", "Tipo", ["Bailarina", "Placa vibratoria", "Rodillo"]), numero("anio", "Año")],
+      },
+      {
+        id: "carga",
+        nombre: "Minicargadores y retro",
+        unidades: ["pieza"],
+        fotos: ["sks3", "sks1", "sks2"],
+        campos: [lista("tipo", "Tipo", ["Minicargador", "Retroexcavadora", "Excavadora"]), numero("anio", "Año", undefined, true), numero("horas", "Horas de uso", "h")],
+      },
+      {
+        id: "generadores",
+        nombre: "Generadores y bombas",
+        unidades: ["pieza"],
+        fotos: ["gen1", "gen2", "gen3"],
+        campos: [lista("tipo", "Tipo", ["Generador", "Bomba de agua", "Compresor"]), texto("potencia", "Potencia")],
+      },
+    ],
+  },
+];
+
+// Palabras de obra que no se escriben igual en todos lados. La búsqueda las junta.
+export const SINONIMOS: Record<string, string[]> = {
+  fierro: ["varilla", "acero"],
+  varilla: ["fierro"],
+  acero: ["varilla"],
+  tabicon: ["block"],
+  block: ["tabicon", "bloque"],
+  bloque: ["block"],
+  tabique: ["ladrillo"],
+  ladrillo: ["tabique"],
+  triplay: ["cimbraplay", "tablero"],
+  trompo: ["revolvedora"],
+  revolvedora: ["trompo", "mezcladora"],
+  mezcladora: ["revolvedora"],
+  bailarina: ["apisonador", "compactadora"],
+  apisonador: ["bailarina"],
+  compactadora: ["bailarina", "placa"],
+  bobcat: ["minicargador"],
+  minicargador: ["bobcat"],
+  "planta de luz": ["generador"],
+  planta: ["generador"],
+  generador: ["planta"],
+  azulejo: ["loseta", "ceramica"],
+  loseta: ["azulejo", "piso"],
+  piso: ["loseta", "azulejo", "porcelanato"],
+  excusado: ["wc"],
+  inodoro: ["wc"],
+  taza: ["wc"],
+  impermeable: ["impermeabilizante"],
+  tubo: ["tuberia"],
+  cable: ["thw"],
+  polin: ["polines", "barrote"],
+  armex: ["castillo"],
+  castillo: ["armex"],
+};
