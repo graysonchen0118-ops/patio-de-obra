@@ -243,7 +243,7 @@ function Buscador() {
                     {masCercano && (
                       <>
                         {" "}
-                        El más cercano está {textoDistancia(masCercano.km)}, en {etiquetaLugar(masCercano.u)}.
+                        El más cercano está {textoDistancia(masCercano.km)}, en {etiquetaLugar(masCercano.u).replace(/\.$/, "")}.
                       </>
                     )}
                   </span>
@@ -261,7 +261,7 @@ function Buscador() {
                 <div className="banner ok">
                   <MapPin size={18} />
                   <span>
-                    {res.otrosEstados} de estos anuncios están en {res.estadosVecinos.map(abreviaEstado).join(" y ")}: otro estado, pero dentro de {radioUsadoEtq} de usted.
+                    {res.otrosEstados === 1 ? "1 de estos anuncios está en" : `${res.otrosEstados} de estos anuncios están en`} {res.estadosVecinos.map(abreviaEstado).join(" y ")}: otro estado, pero dentro de {radioUsadoEtq} de usted.
                   </span>
                 </div>
               )}

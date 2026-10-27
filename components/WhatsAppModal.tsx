@@ -10,7 +10,7 @@ import { Modal } from "./ui";
 
 export default function WhatsAppModal({ open, onClose, a, vendedor, desde }: { open: boolean; onClose: () => void; a: Anuncio; vendedor: Usuario; desde: Ubicacion }) {
   const { db, registrarContacto, toast } = useStore();
-  const base = `Hola, vi en ${db?.marca.nombre ?? "Patio de Obra"} su anuncio "${a.titulo}" (${pesos(a.precio)} por ${a.unidad}). Sigue disponible? Me interesan ${cantidadUnidad(a.minimo ?? 1, a.unidad)} y estoy en ${etiquetaLugar(desde)}.`;
+  const base = `Hola, vi en ${db?.marca.nombre ?? "Patio de Obra"} su anuncio "${a.titulo}" (${pesos(a.precio)} por ${a.unidad}). Sigue disponible? Me interesan ${cantidadUnidad(a.minimo ?? 1, a.unidad)} y estoy en ${etiquetaLugar(desde).replace(/\.$/, "")}.`;
   const [texto, setTexto] = useState(base);
   useEffect(() => {
     if (open) setTexto(base);
