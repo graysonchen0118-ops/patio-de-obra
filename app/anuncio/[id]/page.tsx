@@ -225,7 +225,7 @@ export default function AnuncioPage() {
                         <Star key={n} size={14} fill={(promedio(db, vendedor.id) ?? 0) >= n - 0.25 ? "#d9a21b" : "none"} color="#d9a21b" />
                       ))}
                       <span style={{ marginLeft: 4 }}>{promedio(db, vendedor.id)?.toFixed(1) ?? "Sin calificar"}</span>
-                      <span className="muted">({vendedor.calif?.n ?? 0} opiniones)</span>
+                      <span className="muted">({vendedor.calif?.n ?? 0} {vendedor.calif?.n === 1 ? "opinión" : "opiniones"})</span>
                     </div>
                   )}
                 </div>

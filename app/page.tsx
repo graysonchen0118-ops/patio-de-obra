@@ -217,7 +217,7 @@ export default function Inicio() {
             <div className="banner info" style={{ marginTop: 14 }}>
               <MapPin size={18} />
               <span>
-                A {radio} km de {origen.municipio} hay <b>{mapa.resultados.length} anuncios</b>, y <b>{mapa.otrosEstados}</b> están en {mapa.estadosVecinos.map(abreviaEstado).join(" y ")}. Con una búsqueda por estado no aparecerían{origen.estado === "Estado de México" && radio <= 25 ? ", aunque quedan más cerca que Toluca, la capital del suyo" : ""}.
+                A {radio} km de {origen.municipio} hay <b>{mapa.resultados.length} {mapa.resultados.length === 1 ? "anuncio" : "anuncios"}</b>, y <b>{mapa.otrosEstados}</b> están en {mapa.estadosVecinos.map(abreviaEstado).join(" y ")}. Con una búsqueda por estado no aparecerían{origen.estado === "Estado de México" && radio <= 25 ? ", aunque quedan más cerca que Toluca, la capital del suyo" : ""}.
               </span>
             </div>
           )}

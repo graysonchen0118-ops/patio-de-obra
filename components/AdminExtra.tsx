@@ -8,7 +8,7 @@ import { useStore } from "@/lib/store";
 import { buscar, FILTROS_VACIOS, llenadoZona, saldo, ZONAS } from "@/lib/engine";
 import { buscarCP, etiquetaLugar, textoDistancia, ubicacion } from "@/lib/geo";
 import { paleta, PRESETS, valido } from "@/lib/color";
-import { fechaCorta, numero, pesos, diasEntre } from "@/lib/format";
+import { fechaCorta, numero, pesos, diasEntre, plural } from "@/lib/format";
 import { foto } from "@/lib/photos";
 import { DESTACAR } from "@/lib/seed";
 import { Spin, Toggle } from "./ui";
@@ -306,7 +306,7 @@ export function CapturaTab() {
           const unidad = sub?.unidades.find((u) => resto && (resto === u || resto === u + "s" || resto === u + "es")) ?? sub?.unidades[0] ?? "pieza";
           const precio = Number((p ?? "").replace(/[^\d.]/g, ""));
           const ok = (t ?? "").length >= 6 && cantidad > 0 && precio > 0;
-          return { titulo: (t ?? "").trim(), cantidad, unidad, precio, ok };
+          return { raw: l, titulo: (t ?? "").trim(), cantidad, unidad, precio, ok };
         }),
     [texto, sub],
   );
@@ -404,11 +404,18 @@ export function CapturaTab() {
               {filas.map((f, i) => (
                 <tr key={i}>
                   <td style={{ fontWeight: 700 }}>{f.titulo || "Sin título"}</td>
-                  <td className="num">{Number.isFinite(f.cantidad) ? `${numero(f.cantidad)} ${f.unidad}` : "?"}</td>
+                  <td className="num">{Number.isFinite(f.cantidad) ? `${numero(f.cantidad)} ${plural(f.unidad, f.cantidad)}` : "?"}</td>
                   <td className="num">{f.precio > 0 ? pesos(f.precio) : "?"}</td>
                   <td>{f.ok ? <Check size={16} color="var(--ok)" /> : <span className="badge err">Revisar</span>}</td>
                 </tr>
               ))}
+              {!filas.length && (
+                <tr>
+                  <td colSpan={4} className="muted">
+                    {res ? "Todo lo de la lista ya quedó publicado." : "Pegue a la izquierda la lista que mandó el vendedor."}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -440,10 +447,12 @@ export function CapturaTab() {
             const r = await capturar(v.id, sub.id, lugar.id, validas.map(({ titulo, cantidad, unidad, precio }) => ({ titulo, cantidad, unidad, precio })));
             setBusy(false);
             setRes(r);
+            // lo publicado sale de la lista; lo que no alcanzó o hay que revisar se queda
+            setTexto([...validas.slice(r.publicados), ...filas.filter((f) => !f.ok)].map((f) => f.raw).join("\n"));
             toast(`Listo: ${r.publicados} ${r.publicados === 1 ? "lote publicado" : "lotes publicados"} a nombre de ${v.negocio}.`);
           }}
         >
-          {busy ? <Spin /> : <MessageCircle size={17} />} Publicar {validas.length} {validas.length === 1 ? "lote" : "lotes"} a nombre de {v.negocio}
+          {busy ? <Spin /> : <MessageCircle size={17} />} {validas.length ? `Publicar ${validas.length} ${validas.length === 1 ? "lote" : "lotes"} a nombre de ${v.negocio}` : "Nada pendiente en la lista"}
         </button>
       </div>
     </div>
@@ -563,7 +572,7 @@ export function TableroTab() {
                       <div style={{ width: `${(z.anuncios / maxZona) * 100}%`, height: "100%", borderRadius: 999, background: "var(--accent)", transition: "width .6s" }} />
                     </div>
                     <span className="muted" style={{ minWidth: 150, textAlign: "right" }}>
-                      {z.anuncios} anuncios · {z.vendedores} vendedores · {z.fallidas} sin resultado
+                      {z.anuncios} {z.anuncios === 1 ? "anuncio" : "anuncios"} · {z.vendedores} {z.vendedores === 1 ? "vendedor" : "vendedores"} · {z.fallidas} sin resultado
                     </span>
                   </div>
                 </div>

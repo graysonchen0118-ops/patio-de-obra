@@ -969,6 +969,10 @@ p {
 .banner b {
   font-weight: 800;
 }
+.banner > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
 .results-head {
   display: flex;
   align-items: center;

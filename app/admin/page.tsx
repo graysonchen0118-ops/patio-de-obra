@@ -219,7 +219,7 @@ function Categorias() {
                     <button key={s.id} className={`pick ${s.id === sub?.id ? "on" : ""}`} style={{ padding: "8px 12px", flexDirection: "row", justifyContent: "space-between", fontWeight: 700 }} onClick={() => setSubId(s.id)}>
                       <span>{s.nombre}</span>
                       <span className="muted small">
-                        {s.campos.length} campos · {usados(s.id)} anuncios
+                        {s.campos.length} {s.campos.length === 1 ? "campo" : "campos"} · {usados(s.id)} {usados(s.id) === 1 ? "anuncio" : "anuncios"}
                       </span>
                     </button>
                   ))}
