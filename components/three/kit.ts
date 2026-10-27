@@ -141,3 +141,11 @@ export function sombraSuave(w: number, d: number, opacidad = 0.38) {
   m.renderOrder = 1;
   return m;
 }
+
+// El color de la marca, leído de la paleta del sitio para que el 3D cambie con ella.
+export function acento() {
+  return new THREE.Color(css("--accent", "#b5452b"));
+}
+export function acentoClaro() {
+  return new THREE.Color(css("--accent-2", "#d66a3c"));
+}

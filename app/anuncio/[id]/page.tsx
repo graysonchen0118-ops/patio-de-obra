@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BadgeCheck, CalendarDays, Eye, Flag, MapPin, MessageCircle, Navigation, PackageCheck, Receipt, Truck, Clock3, Pencil } from "lucide-react";
+import { Star, Sparkles, ArrowLeft, BadgeCheck, CalendarDays, Eye, Flag, MapPin, MessageCircle, Navigation, PackageCheck, Receipt, Truck, Clock3, Pencil } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { cercanos, visible } from "@/lib/engine";
+import { cercanos, visible, extrasTarjeta, promedio, destacadoActivo } from "@/lib/engine";
 import { distanciaKm, etiquetaLugar, textoDistancia, ubicacion } from "@/lib/geo";
 import { foto } from "@/lib/photos";
 import { cantidadUnidad, fechaCorta, fechaLarga, faltan, pesos, numero, enmascararTel } from "@/lib/format";
-import { Avatar, Empty, Modal, Skel, useTilt } from "@/components/ui";
+import { Avatar, Empty, Modal, Skel, Spin, useTilt } from "@/components/ui";
 import ListingCard from "@/components/ListingCard";
 import WhatsAppModal from "@/components/WhatsAppModal";
 import { Pila } from "@/components/three/Scenes";
@@ -19,7 +19,10 @@ const MOTIVOS = ["Ya se vendió y sigue publicado", "El precio o la cantidad no 
 
 export default function AnuncioPage() {
   const { id } = useParams<{ id: string }>();
-  const { db, yo, registrarVista, toast } = useStore();
+  const { db, yo, registrarVista, toast, calificar } = useStore();
+  const [calif, setCalif] = useState(false);
+  const [estrellas, setEstrellas] = useState(0);
+  const [califBusy, setCalifBusy] = useState(false);
   const [fotoN, setFotoN] = useState(0);
   const [wa, setWa] = useState(false);
   const [reporte, setReporte] = useState(false);
@@ -97,6 +100,11 @@ export default function AnuncioPage() {
             <div className="gallery-main" ref={tilt}>
               <img key={fotoN} src={foto(a.fotos[fotoN] ?? a.fotos[0], 1200, 900)} alt={a.titulo} width={1200} height={900} />
               <div className="lc-tags">
+                {destacadoActivo(a, db) && (
+                  <span className="badge" style={{ background: "var(--accent)", color: "#fff" }}>
+                    <Sparkles size={12} /> Destacado
+                  </span>
+                )}
                 <span className={`badge ${a.condicion === "Nuevo" ? "ok" : a.condicion === "Seminuevo" ? "sup" : ""}`}>{a.condicion}</span>
               </div>
             </div>
@@ -211,10 +219,19 @@ export default function AnuncioPage() {
                   <div className="row small" style={{ marginTop: 4, color: "var(--ok)", fontWeight: 800 }}>
                     <BadgeCheck size={15} /> WhatsApp confirmado {enmascararTel(vendedor.telefono)}
                   </div>
+                  {db.etapa2.calificaciones && (
+                    <div className="row small" style={{ marginTop: 4, gap: 4, fontWeight: 800 }}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star key={n} size={14} fill={(promedio(db, vendedor.id) ?? 0) >= n - 0.25 ? "#d9a21b" : "none"} color="#d9a21b" />
+                      ))}
+                      <span style={{ marginLeft: 4 }}>{promedio(db, vendedor.id)?.toFixed(1) ?? "Sin calificar"}</span>
+                      <span className="muted">({vendedor.calif?.n ?? 0} opiniones)</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="row small muted" style={{ marginTop: 12, fontWeight: 700, flexWrap: "wrap" }}>
-                <span>En Patio de Obra desde {fechaLarga(vendedor.registradoEl)}</span>
+                <span>En {db.marca.nombre} desde {fechaLarga(vendedor.registradoEl)}</span>
                 <span>·</span>
                 <span>
                   {anunciosVendedor} {anunciosVendedor === 1 ? "anuncio activo" : "anuncios activos"}
@@ -226,9 +243,16 @@ export default function AnuncioPage() {
             </div>
 
             {!esMio && (
-              <button className="btn btn-ghost btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => setReporte(true)}>
-                <Flag size={15} /> Reportar este anuncio
-              </button>
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                {db.etapa2.calificaciones && (
+                  <button className="btn btn-sm" onClick={() => setCalif(true)}>
+                    <Star size={15} /> Calificar al vendedor
+                  </button>
+                )}
+                <button className="btn btn-ghost btn-sm" onClick={() => setReporte(true)}>
+                  <Flag size={15} /> Reportar este anuncio
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -243,7 +267,7 @@ export default function AnuncioPage() {
             </div>
             <div className="cards">
               {parecidos.map((r, i) => (
-                <ListingCard key={r.a.id} a={r.a} u={r.u} km={r.km} hoy={db.hoy} i={i} otroEstado={r.u.estado !== origen.estado} />
+                <ListingCard key={r.a.id} a={r.a} u={r.u} km={r.km} hoy={db.hoy} i={i} otroEstado={r.u.estado !== origen.estado} {...extrasTarjeta(db, r.a)} />
               ))}
             </div>
           </section>
@@ -264,6 +288,43 @@ export default function AnuncioPage() {
       )}
 
       <WhatsAppModal open={wa} onClose={() => setWa(false)} a={a} vendedor={vendedor} desde={origen} />
+      <Modal
+        open={calif}
+        onClose={() => setCalif(false)}
+        title={`Calificar a ${vendedor.negocio}`}
+        icon={<Star size={19} color="#d9a21b" />}
+        foot={
+          <>
+            <button className="btn" onClick={() => setCalif(false)}>
+              Cancelar
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={!estrellas || califBusy}
+              onClick={async () => {
+                setCalifBusy(true);
+                await calificar(vendedor.id, estrellas);
+                setCalifBusy(false);
+                setCalif(false);
+                setEstrellas(0);
+              }}
+            >
+              {califBusy ? <Spin /> : <Star size={16} />} Enviar
+            </button>
+          </>
+        }
+      >
+        <p className="muted small" style={{ marginBottom: 12 }}>
+          Solo pueden calificar quienes le escribieron por WhatsApp desde el sitio. Cuenta si el material era como en las fotos y si el vendedor cumplió con lo que dijo.
+        </p>
+        <div className="row" style={{ gap: 6 }}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} className="icon-btn" onClick={() => setEstrellas(n)} aria-label={`${n} estrellas`}>
+              <Star size={28} fill={estrellas >= n ? "#d9a21b" : "none"} color="#d9a21b" />
+            </button>
+          ))}
+        </div>
+      </Modal>
       <Modal
         open={reporte}
         onClose={() => setReporte(false)}

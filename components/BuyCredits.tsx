@@ -15,6 +15,8 @@ export default function BuyCredits({ open, onClose }: { open: boolean; onClose: 
   const [err, setErr] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [pago, setPago] = useState<Pago | null>(null);
+  const [conFactura, setConFactura] = useState(false);
+  const [fac, setFac] = useState({ rfc: "", razon: "" });
   if (!db) return null;
   const paquete = db.paquetes.find((p) => p.id === pq)!;
   const vence = sumarMeses(db.hoy, db.reglas.compraMeses);
@@ -28,17 +30,22 @@ export default function BuyCredits({ open, onClose }: { open: boolean; onClose: 
   };
 
   const pagar = async () => {
+    // tarjeta y factura se revisan juntas, para marcar todo lo que falta de una vez
+    const e: Record<string, string> = {};
     if (metodo === "tarjeta") {
-      const e: Record<string, string> = {};
       if (tarjeta.nombre.trim().length < 3) e.nombre = "Escriba el nombre como aparece en la tarjeta.";
       if (tarjeta.numero.replace(/\D/g, "").length !== 16) e.numero = "La tarjeta lleva 16 dígitos.";
       if (!/^\d{2}\/\d{2}$/.test(tarjeta.vence)) e.vence = "Formato MM/AA.";
       if (!/^\d{3,4}$/.test(tarjeta.cvv)) e.cvv = "3 o 4 dígitos.";
-      setErr(e);
-      if (Object.keys(e).length) return;
     }
+    if (db.etapa2.factura && conFactura) {
+      if (!/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/i.test(fac.rfc.trim())) e.rfc = "El RFC lleva 12 o 13 caracteres, como CBA170512QX4.";
+      if (fac.razon.trim().length < 3) e.razon = "Escriba la razón social tal como está en su constancia.";
+    }
+    setErr(e);
+    if (Object.keys(e).length) return;
     setBusy(true);
-    const p = await comprar(pq, metodo);
+    const p = await comprar(pq, metodo, db.etapa2.factura && conFactura ? { rfc: fac.rfc.trim().toUpperCase(), razon: fac.razon.trim() } : undefined);
     setBusy(false);
     setPago(p);
   };
@@ -115,6 +122,29 @@ export default function BuyCredits({ open, onClose }: { open: boolean; onClose: 
               </label>
             </div>
           )}
+          {db.etapa2.factura && (
+            <div className="card" style={{ padding: 14, background: "var(--surface-2)" }}>
+              <label className="toggle">
+                <input type="checkbox" checked={conFactura} onChange={(e) => setConFactura(e.target.checked)} />
+                <span className="sw" />
+                <span>Quiero factura de esta compra</span>
+              </label>
+              {conFactura && (
+                <div className="form-grid" style={{ marginTop: 12 }}>
+                  <label className="field">
+                    <span>RFC</span>
+                    <input className={`input ${err.rfc ? "bad" : ""}`} value={fac.rfc} onChange={(e) => setFac({ ...fac, rfc: e.target.value.toUpperCase().slice(0, 13) })} placeholder="CBA170512QX4" />
+                    {err.rfc && <span className="err-text">{err.rfc}</span>}
+                  </label>
+                  <label className="field">
+                    <span>Razón social</span>
+                    <input className={`input ${err.razon ? "bad" : ""}`} value={fac.razon} onChange={(e) => setFac({ ...fac, razon: e.target.value })} />
+                    {err.razon && <span className="err-text">{err.razon}</span>}
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
           {metodo !== "tarjeta" && (
             <p className="muted small">
               {metodo === "oxxo" ? "Le damos una referencia para pagar en cualquier OXXO. Los créditos se suman cuando la tienda confirma el pago." : "Le damos una CLABE para transferir desde su banco. Los créditos se suman al confirmarse la transferencia."}
@@ -159,6 +189,14 @@ export default function BuyCredits({ open, onClose }: { open: boolean; onClose: 
           </div>
           <h3 className="h3">Listo, sumó {pago.creditos} {pago.creditos === 1 ? "crédito" : "créditos"}</h3>
           <p className="muted">Vencen el {fechaCorta(vence)}. Los que ya tenía conservan su propia fecha.</p>
+          {pagoVivo?.factura && (
+            <div className="banner ok" style={{ textAlign: "left" }}>
+              <CheckCircle2 size={18} />
+              <span>
+                Factura {pagoVivo.factura.folio} a nombre de {pagoVivo.factura.razon} ({pagoVivo.factura.rfc}) enviada a su correo en PDF y XML.
+              </span>
+            </div>
+          )}
           <button className="btn btn-primary" onClick={cerrar}>
             Seguir
           </button>

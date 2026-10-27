@@ -193,6 +193,7 @@ export default function StackScene({ tipo, cantidad, maximo }: Props) {
       track(g);
       mesh = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ color, metalness: metal ?? 0, roughness: rough ?? 0.8, side: tipo === "tubos" ? THREE.DoubleSide : THREE.FrontSide }), cap);
       mesh.castShadow = mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       grupo.add(mesh);
       for (let n = 0; n < cap; n++) vivos.push({ s: 0, y: 1.5 });

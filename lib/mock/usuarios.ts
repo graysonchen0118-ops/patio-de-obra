@@ -37,5 +37,13 @@ export const USUARIOS: UsuarioSemilla[] = [
   // misma persona, mismo WhatsApp, cuentas nuevas: la cuenta se crea, el regalo no se repite
   { id: "u21", nombre: "Jesús Cárdenas", negocio: "Materiales Cárdenas", tipo: "Maestro de obra", foto: "ppl13", ubicacionId: "ecatepec", telefono: "5531209876", email: "materialescardenas@correo.mx", registro: 9, bienvenida: "bloqueada" },
   { id: "u22", nombre: "J. Cárdenas", negocio: "Sobrantes Ecatepec", tipo: "Particular", foto: "ppl13", ubicacionId: "ecatepec", telefono: "5531209876", email: "sobrantes.ecatepec@correo.mx", registro: 3, bienvenida: "bloqueada" },
+  // usaron su regalo y no han vuelto a comprar: el número que más importa del tablero
+  { id: "u24", nombre: "Pedro Salazar", negocio: "Pedro Salazar, maestro de obra", tipo: "Maestro de obra", foto: "", ubicacionId: "gam", telefono: "5590127734", email: "pedro.salazar@correo.mx", registro: 64, bienvenida: "otorgada" },
+  { id: "u25", nombre: "Mónica Rangel", negocio: "Remodelaciones Rangel", tipo: "Constructora", foto: "", ubicacionId: "queretaro", telefono: "4421907765", email: "monica@remodelacionesrangel.mx", registro: 48, bienvenida: "otorgada" },
+  { id: "u26", nombre: "Hugo Esparza", negocio: "Ferretería Esparza", tipo: "Ferretería", foto: "", ubicacionId: "guadalajara", telefono: "3312095518", email: "ferreteriaesparza@correo.mx", registro: 91, bienvenida: "otorgada" },
+  { id: "u27", nombre: "Raúl Domínguez", negocio: "Raúl Domínguez", tipo: "Particular", foto: "", ubicacionId: "puebla", telefono: "2229014472", email: "raul.dominguez@correo.mx", registro: 37, bienvenida: "otorgada" },
+  { id: "u28", nombre: "Teresa Ávila", negocio: "Construcciones Ávila", tipo: "Constructora", foto: "", ubicacionId: "merida", telefono: "9993308121", email: "tavila@construccionesavila.mx", registro: 120, bienvenida: "otorgada" },
+  { id: "u29", nombre: "Iván Chávez", negocio: "Iván Chávez, maestro de obra", tipo: "Maestro de obra", foto: "", ubicacionId: "tlaxcala", telefono: "2461187703", email: "ivan.chavez@correo.mx", registro: 55, bienvenida: "otorgada" },
+  { id: "u30", nombre: "Gabriela Soto", negocio: "Acabados Soto", tipo: "Ferretería", foto: "", ubicacionId: "monterrey", telefono: "8119021146", email: "gabriela@acabadossoto.mx", registro: 77, bienvenida: "otorgada" },
   { id: "u23", nombre: "Gerardo Ochoa", negocio: "Ferretería Ochoa", tipo: "Ferretería", foto: "hw3", ubicacionId: "cuernavaca", telefono: "7773029915", email: "ferreteriaochoa@correo.mx", registro: 12, bienvenida: "otorgada" },
 ];

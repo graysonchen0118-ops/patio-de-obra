@@ -63,6 +63,8 @@ export interface Anuncio {
   factura: boolean;
   flete: boolean;
   renovaciones: number;
+  destacadoHasta?: ISODate;
+  primerContactoHoras?: number;
 }
 
 export type TipoVendedor = "Constructora" | "Ferretería" | "Maestro de obra" | "Particular" | "Renta de maquinaria";
@@ -81,6 +83,7 @@ export interface Usuario {
   whatsappVerificado: boolean;
   bienvenida: EstadoBienvenida;
   rol: "vendedor" | "admin";
+  calif?: { suma: number; n: number };
 }
 
 export type OrigenLote = "bienvenida" | "compra" | "ajuste";
@@ -98,7 +101,7 @@ export interface LoteCreditos {
   pagoId?: string;
 }
 
-export type TipoMovimiento = "bienvenida" | "compra" | "publicacion" | "renovacion" | "vencimiento" | "ajuste";
+export type TipoMovimiento = "bienvenida" | "compra" | "publicacion" | "renovacion" | "vencimiento" | "ajuste" | "destacado";
 
 export interface Movimiento {
   id: string;
@@ -123,6 +126,7 @@ export interface Pago {
   fecha: ISODate;
   estado: "pagado" | "pendiente";
   referencia?: string;
+  factura?: { rfc: string; razon: string; folio: string };
 }
 
 export interface Paquete {
@@ -163,6 +167,39 @@ export interface EventoCalendario {
   tipo: "vence-credito" | "vence-anuncio" | "aviso";
 }
 
+export interface Marca {
+  nombre: string;
+  lema: string;
+  color: string;
+  logo: string | null;
+}
+
+export interface Etapa2 {
+  destacados: boolean;
+  alertas: boolean;
+  calificaciones: boolean;
+  factura: boolean;
+}
+
+export interface BusquedaFallida {
+  id: string;
+  termino: string;
+  ubicacionId: string;
+  veces: number;
+  ultima: ISODate;
+  masCercanaKm: number | null;
+}
+
+export interface Alerta {
+  id: string;
+  termino: string;
+  ubicacionId: string;
+  radioKm: number;
+  email: string;
+  fecha: ISODate;
+  avisos: number;
+}
+
 export interface Db {
   version: number;
   hoy: ISODate;
@@ -180,4 +217,8 @@ export interface Db {
   eventos: EventoCalendario[];
   seq: number;
   busquedaUbicacionId: string;
+  marca: Marca;
+  etapa2: Etapa2;
+  busquedasFallidas: BusquedaFallida[];
+  alertas: Alerta[];
 }

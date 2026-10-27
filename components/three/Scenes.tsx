@@ -32,3 +32,8 @@ export const Fichas = dynamic(() => import("./CreditScene"), {
   ssr: false,
   loading: () => <div className="skel" style={{ position: "absolute", inset: 0 }} aria-hidden="true" />,
 });
+
+export const Etapas = dynamic(() => import("./EtapasScene"), {
+  ssr: false,
+  loading: () => <div className="skel" style={{ position: "absolute", inset: 0 }} aria-hidden="true" />,
+});

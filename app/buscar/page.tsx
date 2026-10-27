@@ -1,14 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, Map as MapIcon, MapPin, Search, SearchX, Sparkles, Waypoints, LocateFixed, SlidersHorizontal } from "lucide-react";
+import { BellPlus, ArrowUpRight, Map as MapIcon, MapPin, Search, SearchX, Sparkles, Waypoints, LocateFixed, SlidersHorizontal } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { buscar, type Filtros } from "@/lib/engine";
+import { buscar, type Filtros, extrasTarjeta } from "@/lib/engine";
 import { buscarCP, RADIOS, ubicacion, etiquetaLugar, abreviaEstado, UBICACIONES, distanciaKm, textoDistancia } from "@/lib/geo";
 import ListingCard from "@/components/ListingCard";
-import { CardSkel, Empty, Toggle, useCargando } from "@/components/ui";
+import { CardSkel, Empty, Modal, Spin, Toggle, useCargando } from "@/components/ui";
 import { Mapa } from "@/components/three/Scenes";
 
 const POR_PAGINA = 12;
@@ -16,7 +16,12 @@ const POR_PAGINA = 12;
 function Buscador() {
   const sp = useSearchParams();
   const router = useRouter();
-  const { db, fijarUbicacion } = useStore();
+  const { db, fijarUbicacion, crearAlerta, registrarBusquedaFallida } = useStore();
+  const [alerta, setAlerta] = useState(false);
+  const [alertaEmail, setAlertaEmail] = useState("");
+  const [alertaKm, setAlertaKm] = useState(25);
+  const [alertaBusy, setAlertaBusy] = useState(false);
+  const registradas = useRef(new Set<string>());
 
   const [q, setQ] = useState(sp.get("q") ?? "");
   const [qInput, setQInput] = useState(sp.get("q") ?? "");
@@ -100,6 +105,15 @@ function Buscador() {
   const lista = res?.resultados ?? [];
   const visibles = lista.slice(0, pagina * POR_PAGINA);
   const masCercano = lista[0];
+
+  // lo que se buscó y no había cerca queda anotado para el tablero del mes
+  useEffect(() => {
+    if (!res || cargando || !q.trim() || res.enRadioPedido > 0) return;
+    const k = `${q}|${origen.id}|${radio}`;
+    if (registradas.current.has(k)) return;
+    registradas.current.add(k);
+    registrarBusquedaFallida(q, origen.id, lista[0] ? Math.round(lista[0].km) : null);
+  }, [res, cargando, q, origen.id, radio, lista, registrarBusquedaFallida]);
 
   const panelFiltros = (
     <div className="card filters">
@@ -253,6 +267,17 @@ function Buscador() {
               )}
             </div>
 
+            {db?.etapa2.alertas && q && !cargando && (
+              <div className="banner info" style={{ marginBottom: 14, alignItems: "center" }}>
+                <BellPlus size={18} />
+                <span style={{ flex: 1 }}>
+                  Si hoy no está lo que busca, le avisamos por correo cuando alguien publique <b>&quot;{q}&quot;</b> cerca de {origen.municipio}.
+                </span>
+                <button className="btn btn-sm btn-dark" onClick={() => setAlerta(true)}>
+                  Avísenme
+                </button>
+              </div>
+            )}
             {verMapa && (
               <div className="map-wrap" style={{ height: 320, minHeight: 0, marginBottom: 18 }}>
                 {db && <Mapa centro={origen} estadoOrigen={origen.estado} radioKm={res ? res.radioUsado : radio} pins={pins} seleccionado={sel} onSelect={(id) => setSel(id)} />}
@@ -276,7 +301,7 @@ function Buscador() {
 
             <div className="cards">
               {(cargando || !res) && Array.from({ length: 6 }, (_, i) => <CardSkel key={i} />)}
-              {!cargando && res && visibles.map((r, i) => <ListingCard key={r.a.id} a={r.a} u={r.u} km={r.km} hoy={db!.hoy} i={i} otroEstado={r.u.estado !== origen.estado} />)}
+              {!cargando && res && visibles.map((r, i) => <ListingCard key={r.a.id} a={r.a} u={r.u} km={r.km} hoy={db!.hoy} i={i} otroEstado={r.u.estado !== origen.estado} {...extrasTarjeta(db!, r.a)} />)}
             </div>
             {!cargando && res && lista.length === 0 && (
               <Empty icon={<SearchX size={28} />} title="Nada con esos filtros" action={radio !== null ? <button className="btn btn-primary" onClick={() => setRadio(null)}>Buscar en todo México</button> : undefined}>
@@ -293,7 +318,63 @@ function Buscador() {
           </div>
         </div>
       </div>
+      <ModalAlerta
+        open={alerta}
+        onClose={() => setAlerta(false)}
+        q={q}
+        lugar={origen.municipio}
+        km={alertaKm}
+        setKm={setAlertaKm}
+        email={alertaEmail}
+        setEmail={setAlertaEmail}
+        busy={alertaBusy}
+        onSave={async () => {
+          setAlertaBusy(true);
+          await crearAlerta(q, origen.id, alertaKm, alertaEmail.trim());
+          setAlertaBusy(false);
+          setAlerta(false);
+        }}
+      />
     </div>
+  );
+}
+
+function ModalAlerta({ open, onClose, q, lugar, km, setKm, email, setEmail, busy, onSave }: { open: boolean; onClose: () => void; q: string; lugar: string; km: number; setKm: (n: number) => void; email: string; setEmail: (s: string) => void; busy: boolean; onSave: () => void }) {
+  const valido = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Avisarme cuando aparezca"
+      icon={<BellPlus size={19} color="var(--sup)" />}
+      foot={
+        <>
+          <button className="btn" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn btn-primary" disabled={!valido || busy} onClick={onSave}>
+            {busy ? <Spin /> : <BellPlus size={16} />} Crear alerta
+          </button>
+        </>
+      }
+    >
+      <div className="stack">
+        <p className="muted small">
+          Cuando un vendedor publique &quot;{q}&quot; dentro de la distancia que elija desde {lugar}, le llega un correo con el anuncio. El vendedor también ve que hay compradores esperando ese material.
+        </p>
+        <div className="wrap-row">
+          {[10, 25, 50, 100].map((n) => (
+            <button key={n} className={`chip ${km === n ? "on" : ""}`} onClick={() => setKm(n)}>
+              {n} km
+            </button>
+          ))}
+        </div>
+        <label className="field">
+          <span>Su correo</span>
+          <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="compras@suempresa.mx" />
+        </label>
+      </div>
+    </Modal>
   );
 }
 

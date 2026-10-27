@@ -9,6 +9,16 @@ import { saldo, lotesEnOrden } from "@/lib/engine";
 import { diasEntre, fechaCorta, fechaDia } from "@/lib/format";
 import { Backdrop } from "./three/Scenes";
 import { Avatar, Toasts } from "./ui";
+import { paleta } from "@/lib/color";
+import type { Marca } from "@/lib/types";
+
+function Marca_({ marca, small = true }: { marca: Marca; small?: boolean }) {
+  return (
+    <span className="brand-mark" style={marca.logo ? { background: "#fff", padding: 3 } : undefined}>
+      {marca.logo ? <img src={marca.logo} alt="" width={30} height={30} style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 8 }} /> : <Boxes size={small ? 20 : 22} />}
+    </span>
+  );
+}
 
 const NAV = [
   { href: "/buscar", label: "Buscar", icon: Search },
@@ -45,6 +55,14 @@ export default function Shell({ children }: { children: ReactNode }) {
     setMenu(false);
   }, [path]);
 
+  const marca = db?.marca ?? { nombre: "Patio de Obra", lema: "Sobrantes de construcción en todo México", color: "#b5452b", logo: null };
+  useEffect(() => {
+    const root = document.documentElement;
+    Object.entries(paleta(marca.color)).forEach(([k, v]) => root.style.setProperty(k, v));
+    document.title = `${marca.nombre} | ${marca.lema}`;
+    window.dispatchEvent(new CustomEvent("patio:pulso", { detail: "marca" }));
+  }, [marca.color, marca.nombre, marca.lema]);
+
   const creditos = db && yo ? saldo(db, yo.id) : 0;
   const proximo = db && yo ? lotesEnOrden(db, yo.id)[0] : undefined;
   const porVencer = !!(db && proximo && diasEntre(db.hoy, proximo.venceEl) <= db.reglas.avisoCreditoDias);
@@ -61,13 +79,11 @@ export default function Shell({ children }: { children: ReactNode }) {
             <button className="icon-btn burger" onClick={() => setDrawer(true)} aria-label="Abrir menú">
               <Menu size={20} />
             </button>
-            <Link href="/" className="brand" aria-label="Patio de Obra, inicio">
-              <span className="brand-mark">
-                <Boxes size={20} />
-              </span>
+            <Link href="/" className="brand" aria-label={`${marca.nombre}, inicio`}>
+              <Marca_ marca={marca} />
               <span>
-                Patio de Obra
-                <small>Sobrantes de construcción en todo México</small>
+                {marca.nombre}
+                <small>{marca.lema}</small>
               </span>
             </Link>
             <nav className="nav" aria-label="Principal">
@@ -182,10 +198,8 @@ export default function Shell({ children }: { children: ReactNode }) {
         <aside className={`drawer ${drawer ? "open" : ""}`} aria-hidden={!drawer}>
           <div className="row" style={{ marginBottom: 10 }}>
             <span className="brand">
-              <span className="brand-mark">
-                <Boxes size={20} />
-              </span>
-              Patio de Obra
+              <Marca_ marca={marca} />
+              {marca.nombre}
             </span>
             <span className="spacer" />
             <button className="icon-btn" onClick={() => setDrawer(false)} aria-label="Cerrar menú">
@@ -213,10 +227,8 @@ export default function Shell({ children }: { children: ReactNode }) {
           <div className="foot-in">
             <div>
               <div className="brand" style={{ color: "#fff" }}>
-                <span className="brand-mark">
-                  <Boxes size={20} />
-                </span>
-                Patio de Obra
+                <Marca_ marca={marca} />
+                {marca.nombre}
               </div>
               <p style={{ marginTop: 12, fontSize: 14, color: "#c4d3d8", maxWidth: 300 }}>
                 Material, herramienta y maquinaria que sobró de una obra, a la vista de quien lo necesita cerca. Buscar es gratis y el trato se cierra directo por WhatsApp.
@@ -243,7 +255,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="foot-bottom">
-            <span>© 2026 Patio de Obra. El sitio no interviene en pagos, entregas ni negociaciones entre las partes.</span>
+            <span>© 2026 {marca.nombre}. El sitio no interviene en pagos, entregas ni negociaciones entre las partes.</span>
             <span>Fotos: Unsplash · Mapa: Natural Earth</span>
           </div>
         </footer>

@@ -236,7 +236,7 @@ export default function Registro() {
             <MessageCircle size={20} />
           </span>
           <span>
-            <b style={{ display: "block", fontSize: 13 }}>WhatsApp · Patio de Obra</b>
+            <b style={{ display: "block", fontSize: 13 }}>WhatsApp · {db.marca.nombre}</b>
             <span style={{ fontSize: 14 }}>
               Su código es <b style={{ letterSpacing: "0.08em" }}>{enviado}</b>. No lo comparta con nadie.
             </span>

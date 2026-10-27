@@ -1,10 +1,10 @@
-import type { Anuncio, Aviso, Db, LoteCreditos, Movimiento, Pago, Paquete, Reglas, Usuario, MetodoPago } from "./types";
+import type { Alerta, Anuncio, Aviso, BusquedaFallida, Db, LoteCreditos, Marca, Movimiento, Pago, Paquete, Reglas, Usuario, MetodoPago } from "./types";
 import { CATEGORIAS } from "./mock/categorias";
 import { USUARIOS } from "./mock/usuarios";
 import { ANUNCIOS } from "./mock/anuncios";
 import { sumarDias, sumarMeses, fechaCorta } from "./format";
 
-export const VERSION = 5;
+export const VERSION = 7;
 
 export const REGLAS_BASE: Reglas = {
   bienvenidaCreditos: 1,
@@ -24,6 +24,35 @@ export const PAQUETES_BASE: Paquete[] = [
   { id: "p25", nombre: "Paquete 25", creditos: 25, precio: 1125 },
 ];
 
+export const MARCA_BASE: Marca = { nombre: "Patio de Obra", lema: "Sobrantes de construcción en todo México", color: "#b5452b", logo: null };
+
+// Destacar es una función de la segunda etapa: cuesta créditos y dura una semana.
+export const DESTACAR = { creditos: 2, dias: 7 };
+
+// Lo que la gente buscó y no encontró cerca: término, desde dónde, cuántas veces.
+const FALLIDAS: [string, string, number, number, number | null][] = [
+  ["tablaroca", "queretaro", 9, 1, null],
+  ["cemento", "merida", 7, 2, 1120],
+  ['varilla 3/4"', "puebla", 6, 1, 118],
+  ["cimbra metálica", "guadalajara", 5, 3, 640],
+  ["andamio", "puebla", 4, 5, 112],
+  ["impermeabilizante", "merida", 4, 6, 300],
+  ["tinaco", "guadalajara", 3, 2, 470],
+  ["bomba de agua", "monterrey", 3, 9, 410],
+  ["malla sombra", "leon", 3, 4, null],
+  ["revolvedora", "toluca", 2, 7, 56],
+  ["teja", "queretaro", 2, 12, 290],
+  ["tabicón", "tijuana", 2, 8, 1980],
+];
+
+const ALERTAS: [string, string, number, string, number][] = [
+  ["triplay", "puebla", 50, "compras@obrasangelopolis.mx", 3],
+  ["varilla", "naucalpan", 25, "ing.saldana@correo.mx", 12],
+  ["revolvedora", "monterrey", 100, "taller.nuevoleon@correo.mx", 5],
+  ["tablaroca", "queretaro", 50, "acabados.bajio@correo.mx", 1],
+  ["cemento", "merida", 25, "residente.obra@correo.mx", 2],
+];
+
 export function subDe(subId: string, categorias = CATEGORIAS) {
   for (const c of categorias) {
     const s = c.sub.find((x) => x.id === subId);
@@ -38,7 +67,7 @@ export function semilla(hoy: string): Db {
   let n = 0;
   const id = (p: string) => `${p}-${++n}`;
 
-  const usuarios: Usuario[] = USUARIOS.map((u) => ({
+  const usuarios: Usuario[] = USUARIOS.map((u, i) => ({
     id: u.id,
     nombre: u.nombre,
     negocio: u.negocio,
@@ -51,6 +80,10 @@ export function semilla(hoy: string): Db {
     whatsappVerificado: true,
     bienvenida: u.bienvenida,
     rol: "vendedor",
+    calif: u.bienvenida === "bloqueada" || u.registro < 20 ? undefined : (() => {
+      const n = 4 + ((i * 7) % 26);
+      return { suma: Math.round(n * (4.2 + ((i * 3) % 8) / 10) * 10) / 10, n };
+    })(),
   }));
 
   const anuncios: Anuncio[] = ANUNCIOS.map((s) => {
@@ -82,6 +115,8 @@ export function semilla(hoy: string): Db {
       factura: s.factura,
       flete: s.flete,
       renovaciones: 0,
+      // horas hasta el primer mensaje por WhatsApp, para el tablero mensual
+      primerContactoHoras: s.contactos > 0 ? 2 + ((s.id.charCodeAt(4) * 7 + s.id.charCodeAt(5) * 13) % 46) : undefined,
     };
   });
 
@@ -190,5 +225,9 @@ export function semilla(hoy: string): Db {
     eventos: [],
     seq: 2000,
     busquedaUbicacionId: "naucalpan",
+    marca: { ...MARCA_BASE },
+    etapa2: { destacados: false, alertas: false, calificaciones: false, factura: false },
+    busquedasFallidas: FALLIDAS.map(([termino, ubicacionId, veces, dias, km], k): BusquedaFallida => ({ id: `BF-${k + 1}`, termino, ubicacionId, veces, ultima: sumarDias(hoy, -dias), masCercanaKm: km })),
+    alertas: ALERTAS.map(([termino, ubicacionId, radioKm, email, dias], k): Alerta => ({ id: `AL-${k + 1}`, termino, ubicacionId, radioKm, email, fecha: sumarDias(hoy, -dias * 3), avisos: 0 })),
   };
 }

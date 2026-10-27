@@ -149,6 +149,7 @@ function Publicador() {
       return;
     }
     toast(`Publicado. Queda visible hasta el ${fechaCorta(vence)}.`);
+    if (r.alertas > 0) toast(`${r.alertas === 1 ? "Un comprador tenía" : `${r.alertas} compradores tenían`} una alerta para este material cerca: ya les avisamos por correo.`, "info");
     router.push(`/anuncio/${r.id}`);
   };
 

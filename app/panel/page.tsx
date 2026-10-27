@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, Coins, Eye, LayoutList, MessageCircle, Minus, Pause, Pencil, Play, Plus, RefreshCw, Trash2, Clock3, PackageX, CalendarRange, ArrowUpRight, Gift, ShoppingBag, CheckCircle2, Hourglass, PlusCircle, Store } from "lucide-react";
+import { Sparkles, Bell, Coins, Eye, LayoutList, MessageCircle, Minus, Pause, Pencil, Play, Plus, RefreshCw, Trash2, Clock3, PackageX, CalendarRange, ArrowUpRight, Gift, ShoppingBag, CheckCircle2, Hourglass, PlusCircle, Store } from "lucide-react";
 import type { Anuncio, LoteCreditos } from "@/lib/types";
 import { useStore } from "@/lib/store";
-import { estadoLote, lotesEnOrden, saldo, delLote } from "@/lib/engine";
+import { estadoLote, lotesEnOrden, saldo, delLote, destacadoActivo } from "@/lib/engine";
+import { DESTACAR } from "@/lib/seed";
 import { foto } from "@/lib/photos";
 import { cantidadUnidad, diasEntre, faltan, fechaCorta, fechaLarga, pesos, numero, plural } from "@/lib/format";
 import { Empty, Modal, Spin, Avatar } from "@/components/ui";
@@ -25,7 +26,7 @@ const ETQ_ESTADO: Record<Anuncio["estado"], [string, string]> = {
 };
 
 function FilaAnuncio({ a, sel, onSel }: { a: Anuncio; sel: boolean; onSel: () => void }) {
-  const { db, actualizarCantidad, renovar, cambiarEstado, eliminarAnuncio } = useStore();
+  const { db, actualizarCantidad, renovar, cambiarEstado, eliminarAnuncio, destacar } = useStore();
   const [qty, setQty] = useState(String(a.cantidad));
   const [busy, setBusy] = useState<string | null>(null);
   const [borrar, setBorrar] = useState(false);
@@ -62,6 +63,23 @@ function FilaAnuncio({ a, sel, onSel }: { a: Anuncio; sel: boolean; onSel: () =>
         <div className="small" style={{ marginTop: 4, color: "var(--ink-2)", fontWeight: 700 }}>
           {a.estado === "vencido" ? `Venció el ${fechaCorta(a.venceEl)}` : `Vigente hasta el ${fechaCorta(a.venceEl)} · ${faltan(a.venceEl, db.hoy)}`}
         </div>
+        {a.estado === "agotado" && (
+          <div className="banner warn small" style={{ marginTop: 8, padding: "8px 10px" }}>
+            <PackageX size={15} />
+            <span>Fuera de las búsquedas mientras esté en cero. Sus días siguen corriendo; si repone antes del {fechaCorta(a.venceEl)}, vuelve a aparecer sin gastar crédito.</span>
+          </div>
+        )}
+        {a.estado === "vencido" && a.cantidad > 0 && (
+          <div className="banner info small" style={{ marginTop: 8, padding: "8px 10px" }}>
+            <RefreshCw size={15} />
+            <span>Ya cumplió sus {db.reglas.anuncioDias} días. Reponer cantidad no lo regresa; renovarlo sí, por {db.reglas.renovacionCreditos} crédito.</span>
+          </div>
+        )}
+        {destacadoActivo(a, db) && (
+          <span className="badge acc" style={{ marginTop: 8 }}>
+            <Sparkles size={12} /> Destacado hasta el {fechaCorta(a.destacadoHasta!)}
+          </span>
+        )}
         <div className="row" style={{ marginTop: 10, flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
           <div className="qty">
             <button onClick={() => setQty(String(Math.max(0, Number(qty || 0) - (a.minimo ?? 1))))} aria-label="Menos">
@@ -99,6 +117,11 @@ function FilaAnuncio({ a, sel, onSel }: { a: Anuncio; sel: boolean; onSel: () =>
               <Pause size={15} /> Pausar
             </button>
           )
+        )}
+        {db.etapa2.destacados && a.estado === "activo" && (
+          <button className="btn btn-sm" disabled={!!busy} onClick={() => hacer("dest", () => destacar(a.id))} title={`${DESTACAR.creditos} créditos por ${DESTACAR.dias} días`}>
+            {busy === "dest" ? <Spin /> : <Sparkles size={15} />} Destacar
+          </button>
         )}
         <Link href={`/publicar?editar=${a.id}`} className="btn btn-sm">
           <Pencil size={15} /> Editar
@@ -196,10 +219,10 @@ function Anuncios() {
             </p>
             <div className="stack-box" style={{ marginTop: 12 }}>
               <Pila tipo={tipoPila(elegido.subId)} cantidad={elegido.cantidad} maximo={elegido.cantidadInicial} />
-              <div className="stack-label">{elegido.cantidad === 0 ? "Sin existencias, anuncio pausado" : cantidadUnidad(elegido.cantidad, elegido.unidad)}</div>
+              <div className="stack-label">{elegido.cantidad === 0 ? "En cero: fuera de búsquedas" : cantidadUnidad(elegido.cantidad, elegido.unidad)}</div>
             </div>
             <p className="small muted" style={{ marginTop: 10 }}>
-              Cuando vende una parte, cambie la cantidad y la pila baja. En cero el anuncio se pausa solo para que nadie le escriba por algo que ya no tiene.
+              Cuando vende una parte, cambie la cantidad y la pila baja. En cero deja de salir en las búsquedas, para que nadie le escriba por algo que ya no tiene, pero sus días siguen contando: si repone a tiempo, regresa sin gastar otro crédito.
             </p>
           </div>
         )}
@@ -284,6 +307,7 @@ function Creditos() {
             <b style={{ color: "var(--ink)" }}>Cómo vencen</b>
             <ul style={{ margin: "8px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
               <li>Comprados: {db.reglas.compraMeses} meses desde la compra de cada paquete.</li>
+              <li>Una compra nueva no cambia la fecha de las anteriores: cada paquete conserva la suya.</li>
               <li>Regalo de bienvenida: {db.reglas.bienvenidaDias} días desde que confirma su WhatsApp.</li>
               <li>Se gasta primero el lote que vence antes, para que nunca se le pierda lo pagado mientras le queda regalo.</li>
               <li>Vencen a las 23:59, hora del centro de México.</li>
@@ -487,7 +511,7 @@ function Panel() {
             <div className="eyebrow">Mi panel</div>
             <h1 className="h2">{yo.negocio}</h1>
             <div className="muted small">
-              {yo.nombre} · en Patio de Obra desde {fechaLarga(yo.registradoEl)}
+              {yo.nombre} · en {db.marca.nombre} desde {fechaLarga(yo.registradoEl)}
             </div>
           </div>
           <span className="spacer" />

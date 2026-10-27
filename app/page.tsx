@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowRight, BadgeCheck, Coins, MapPin, MessageCircle, Search, UserPlus, Camera, Navigation, BrickWall, PaintRoller, Wrench, Layers, Hammer, Truck } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { buscar, cercanos, FILTROS_VACIOS, visible } from "@/lib/engine";
+import { buscar, cercanos, FILTROS_VACIOS, visible, extrasTarjeta } from "@/lib/engine";
 import { buscarCP, RADIOS, ubicacion, etiquetaLugar, abreviaEstado } from "@/lib/geo";
 import { foto } from "@/lib/photos";
 import { pesos, numero } from "@/lib/format";
@@ -153,7 +153,7 @@ export default function Inicio() {
           </div>
           <div className="cards">
             {!db && Array.from({ length: 8 }, (_, i) => <CardSkel key={i} />)}
-            {db && cerca.map((r, i) => <ListingCard key={r.a.id} a={r.a} u={r.u} km={r.km} hoy={db.hoy} i={i} otroEstado={r.u.estado !== origen.estado} />)}
+            {db && cerca.map((r, i) => <ListingCard key={r.a.id} a={r.a} u={r.u} km={r.km} hoy={db.hoy} i={i} otroEstado={r.u.estado !== origen.estado} {...extrasTarjeta(db, r.a)} />)}
           </div>
         </section>
 
@@ -301,7 +301,7 @@ export default function Inicio() {
           </div>
           <div className="cards">
             {!db && Array.from({ length: 4 }, (_, i) => <CardSkel key={i} />)}
-            {db && recientes.map((a, i) => <ListingCard key={a.id} a={a} u={ubicacion(a.ubicacionId)} hoy={db.hoy} i={i} />)}
+            {db && recientes.map((a, i) => <ListingCard key={a.id} a={a} u={ubicacion(a.ubicacionId)} hoy={db.hoy} i={i} {...extrasTarjeta(db, a)} />)}
           </div>
         </section>
       </div>

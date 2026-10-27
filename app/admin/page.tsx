@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarClock, FastForward, RotateCcw, Save, Settings2, Tags, LayoutList, Users, BarChart3, Plus, Trash2, Ban, Play, Eye, ShieldAlert, BadgeCheck, Coins, Clock3, Gift } from "lucide-react";
+import { Palette, Layers3, ClipboardList, CalendarClock, FastForward, RotateCcw, Save, Settings2, Tags, LayoutList, Users, BarChart3, Plus, Trash2, Ban, Play, Eye, ShieldAlert, BadgeCheck, Coins, Clock3, Gift } from "lucide-react";
 import type { CampoPersonalizado, Paquete, Reglas, TipoCampo } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { saldo, delLote } from "@/lib/engine";
@@ -11,6 +11,7 @@ import { ubicacion, etiquetaLugar, UBICACIONES } from "@/lib/geo";
 import { foto } from "@/lib/photos";
 import { diasEntre, enmascararTel, fechaCorta, fechaDia, pesos, sumarDias, sumarMeses, numero } from "@/lib/format";
 import { Avatar, Empty, Spin } from "@/components/ui";
+import { CapturaTab, EtapasTab, MarcaTab, TableroTab } from "@/components/AdminExtra";
 
 function ReglasTab() {
   const { db, guardarReglas, avanzar, reiniciar } = useStore();
@@ -655,17 +656,20 @@ function Admin() {
   if (!db) return <div className="page wrap" />;
   const tabs = [
     ["reglas", "Reglas y calendario", CalendarClock],
+    ["marca", "Marca", Palette],
+    ["etapas", "Etapas", Layers3],
+    ["captura", "Captura asistida", ClipboardList],
+    ["tablero", "Tablero del mes", BarChart3],
     ["categorias", "Categorías", Tags],
     ["anuncios", "Anuncios", LayoutList],
     ["usuarios", "Usuarios", Users],
-    ["ventas", "Ventas", BarChart3],
   ] as const;
   return (
     <div className="page">
       <div className="wrap">
         <div className="eyebrow">Administración</div>
         <h1 className="h2" style={{ marginTop: 6, marginBottom: 18 }}>
-          Patio de Obra por dentro
+          {db.marca.nombre} por dentro
         </h1>
         <div className="tabs" role="tablist">
           {tabs.map(([k, l, I]) => (
@@ -678,7 +682,15 @@ function Admin() {
         {tab === "categorias" && <Categorias />}
         {tab === "anuncios" && <Anuncios />}
         {tab === "usuarios" && <Usuarios />}
-        {tab === "ventas" && <Ventas />}
+        {tab === "marca" && <MarcaTab />}
+        {tab === "etapas" && <EtapasTab />}
+        {tab === "captura" && <CapturaTab />}
+        {(tab === "tablero" || tab === "ventas") && (
+          <div className="stack" style={{ gap: 28 }}>
+            <TableroTab />
+            <Ventas />
+          </div>
+        )}
       </div>
     </div>
   );

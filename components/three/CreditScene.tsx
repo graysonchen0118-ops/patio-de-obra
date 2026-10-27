@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { montar, damp } from "./kit";
+import { montar, damp, acento, acentoClaro } from "./kit";
 
 // Cada lote de créditos es una columna de fichas. La ficha de arriba del lote que vence
 // primero brilla: es la siguiente que se gasta. Al usarla sale volando; lo vencido se
@@ -55,11 +55,11 @@ export default function CreditScene({ lotes }: { lotes: ColumnaLote[] }) {
     const ficha = track(new THREE.CylinderGeometry(0.42, 0.42, 0.075, 40));
     const canto = track(new THREE.TorusGeometry(0.42, 0.012, 6, 40).rotateX(Math.PI / 2));
     const mats = {
-      compra: new THREE.MeshStandardMaterial({ color: 0xc4532f, roughness: 0.3, metalness: 0.35, emissive: 0xb5452b, emissiveIntensity: 0 }),
+      compra: new THREE.MeshStandardMaterial({ color: acento(), roughness: 0.3, metalness: 0.35, emissive: acento(), emissiveIntensity: 0 }),
       bienvenida: new THREE.MeshStandardMaterial({ color: 0x2b5566, roughness: 0.3, metalness: 0.35, emissive: 0x2b5566, emissiveIntensity: 0 }),
       ajuste: new THREE.MeshStandardMaterial({ color: 0x8a7b5c, roughness: 0.35, metalness: 0.3 }),
       vencido: new THREE.MeshStandardMaterial({ color: 0xb9b4ac, roughness: 0.8, transparent: true, opacity: 0.55 }),
-      siguiente: new THREE.MeshStandardMaterial({ color: 0xe3864f, roughness: 0.25, metalness: 0.4, emissive: 0xd66a3c, emissiveIntensity: 0.5 }),
+      siguiente: new THREE.MeshStandardMaterial({ color: acentoClaro(), roughness: 0.25, metalness: 0.4, emissive: acento(), emissiveIntensity: 0.5 }),
       orilla: new THREE.MeshStandardMaterial({ color: 0xf3e2c7, roughness: 0.3, metalness: 0.6 }),
     };
     Object.values(mats).forEach((m) => track(m));
@@ -141,6 +141,14 @@ export default function CreditScene({ lotes }: { lotes: ColumnaLote[] }) {
       ptrX = ((ev.clientX - r.left) / r.width - 0.5) * 2;
     };
     mount.addEventListener("pointermove", onMove);
+    const onMarca = (e: Event) => {
+      if ((e as CustomEvent).detail !== "marca") return;
+      mats.compra.color.copy(acento());
+      mats.compra.emissive.copy(acento());
+      mats.siguiente.color.copy(acentoClaro());
+      mats.siguiente.emissive.copy(acento());
+    };
+    window.addEventListener("patio:pulso", onMarca);
     const labels = () => mount.parentElement?.querySelectorAll<HTMLElement>("[data-lote]") ?? [];
     const pv = new THREE.Vector3();
 
@@ -190,6 +198,7 @@ export default function CreditScene({ lotes }: { lotes: ColumnaLote[] }) {
 
     return () => {
       mount.removeEventListener("pointermove", onMove);
+      window.removeEventListener("patio:pulso", onMarca);
       voladoras.forEach((f) => f.mat.dispose());
       k.dispose();
     };

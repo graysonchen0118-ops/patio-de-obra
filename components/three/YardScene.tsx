@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { montar, damp, sombraSuave } from "./kit";
+import { montar, damp, sombraSuave, acento } from "./kit";
 
 // El patio detrás de una obra: tarimas de cemento, block, varilla, triplay, tubo y una
 // revolvedora. Un anillo de búsqueda sale del centro y cada material se enciende cuando
@@ -253,7 +253,7 @@ export default function YardScene() {
     const cabeza = track(new THREE.SphereGeometry(0.15, 24, 16));
     const pines = puntos.map((p, n) => {
       const g = new THREE.Group();
-      const mat = new THREE.MeshLambertMaterial({ color: n % 2 ? C.sup : C.acento, emissive: C.acento, emissiveIntensity: 0 });
+      const mat = new THREE.MeshLambertMaterial({ color: n % 2 ? C.sup : acento(), emissive: acento(), emissiveIntensity: 0 });
       const c = new THREE.Mesh(pinGeo, mat);
       const h = new THREE.Mesh(cabeza, mat);
       h.position.y = 0.2;
@@ -270,8 +270,8 @@ export default function YardScene() {
     type Onda = { r: THREE.Mesh; d: THREE.Mesh; mr: THREE.MeshBasicMaterial; md: THREE.MeshBasicMaterial; t: number };
     const ondas: Onda[] = [];
     const lanzar = () => {
-      const mr = new THREE.MeshBasicMaterial({ color: C.acento, transparent: true, opacity: 0.85, depthWrite: false });
-      const md = new THREE.MeshBasicMaterial({ color: C.acento, transparent: true, opacity: 0.08, depthWrite: false });
+      const mr = new THREE.MeshBasicMaterial({ color: acento(), transparent: true, opacity: 0.85, depthWrite: false });
+      const md = new THREE.MeshBasicMaterial({ color: acento(), transparent: true, opacity: 0.08, depthWrite: false });
       const r = new THREE.Mesh(anilloGeo, mr);
       const d = new THREE.Mesh(discoGeo, md);
       r.position.y = d.position.y = 0.115;
@@ -280,7 +280,16 @@ export default function YardScene() {
     };
     lanzar();
     let cada = 0;
-    const onPulso = () => lanzar();
+    const onPulso = (e: Event) => {
+      if ((e as CustomEvent).detail === "marca") {
+        const c = acento();
+        pines.forEach((p, n) => {
+          if (n % 2 === 0) p.mat.color.copy(c);
+          p.mat.emissive.copy(c);
+        });
+      }
+      lanzar();
+    };
     window.addEventListener("patio:pulso", onPulso);
 
     // ---- cámara con ratón y rolado ----

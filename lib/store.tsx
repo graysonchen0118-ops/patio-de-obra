@@ -1,10 +1,11 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Anuncio, CampoPersonalizado, Db, MetodoPago, Pago, Paquete, Reglas, TipoVendedor, Usuario } from "./types";
-import { semilla, VERSION } from "./seed";
+import type { Anuncio, CampoPersonalizado, Db, Etapa2, Marca, MetodoPago, Pago, Paquete, Reglas, TipoVendedor, Usuario } from "./types";
+import { semilla, VERSION, DESTACAR, subDe } from "./seed";
 import { hoyCentro, sumarDias, sumarMeses, wait, fechaCorta } from "./format";
-import { avanzarDias, consumir, nuevoId, saldo } from "./engine";
+import { alertasQueCoinciden, avanzarDias, consumir, nuevoId, saldo } from "./engine";
+import { normalizar } from "./format";
 
 export type ToastKind = "ok" | "error" | "info";
 export interface Toast {
@@ -16,7 +17,7 @@ export interface Toast {
 const CLAVE = "patio-de-obra:sesion";
 
 // Avisa a las escenas 3D que algo cambió (un anuncio publicado, un crédito usado...)
-export function pulso(tipo: "publicar" | "credito" | "cantidad" | "contacto" | "vencer" = "publicar") {
+export function pulso(tipo: "publicar" | "credito" | "cantidad" | "contacto" | "vencer" | "marca" = "publicar") {
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("patio:pulso", { detail: tipo }));
 }
 
@@ -98,13 +99,18 @@ function useStoreValue() {
 
   // ---------- anuncios ----------
   const publicar = useCallback(
-    async (datos: DatosAnuncio): Promise<{ ok: true; id: string } | { ok: false; motivo: string }> => {
+    async (datos: DatosAnuncio): Promise<{ ok: true; id: string; alertas: number } | { ok: false; motivo: string }> => {
       await wait(900);
       const d0 = dbRef.current!;
       const costo = 1;
       if (saldo(d0, d0.usuarioId) < costo) return { ok: false, motivo: "sin-creditos" };
+      const prueba = { ...datos, id: "tmp", cantidadInicial: datos.cantidad, vendedorId: d0.usuarioId, publicadoEl: d0.hoy, venceEl: d0.hoy, estado: "activo", vistas: 0, contactos: 0, renovaciones: 0 } as Anuncio;
+      const avisadas = d0.etapa2.alertas ? alertasQueCoinciden(d0, prueba).map((x) => x.id) : [];
       let nuevo = "";
       cambiar((d) => {
+        d.alertas.forEach((al) => {
+          if (avisadas.includes(al.id)) al.avisos += 1;
+        });
         nuevo = `A-${++d.seq}`;
         const a: Anuncio = {
           ...datos,
@@ -124,7 +130,7 @@ function useStoreValue() {
       // el id se generó dentro del cambio; se recalcula igual que ahí
       nuevo = `A-${d0.seq + 1}`;
       pulso("publicar");
-      return { ok: true, id: nuevo };
+      return { ok: true, id: nuevo, alertas: avisadas.length };
     },
     [cambiar],
   );
@@ -147,6 +153,7 @@ function useStoreValue() {
   const actualizarCantidad = useCallback(
     async (id: string, cantidad: number) => {
       await wait(500);
+      const antes = dbRef.current!.anuncios.find((x) => x.id === id);
       cambiar((d) => {
         const a = d.anuncios.find((x) => x.id === id);
         if (!a) return;
@@ -156,7 +163,14 @@ function useStoreValue() {
         else if (a.cantidad > 0 && a.estado === "agotado") a.estado = "activo";
       });
       pulso("cantidad");
-      toast(cantidad === 0 ? "Llegó a cero: el anuncio se pausó solo y ya no aparece en búsquedas." : "Cantidad actualizada.");
+      // la regla del cliente: en cero sale de la búsqueda, la vigencia sigue corriendo,
+      // y si repone a tiempo regresa sin gastar otro crédito
+      if (!antes) return;
+      const hasta = fechaCorta(antes.venceEl);
+      if (cantidad === 0 && antes.estado !== "vencido") toast(`Llegó a cero: sale de las búsquedas, pero su vigencia sigue corriendo hasta el ${hasta}. Si repone antes, vuelve sin gastar crédito.`);
+      else if (cantidad > 0 && antes.estado === "agotado") toast(`Volvió a las búsquedas sin gastar crédito. Sigue vigente hasta el ${hasta}.`);
+      else if (cantidad > 0 && antes.estado === "vencido") toast("Cantidad guardada. Este anuncio ya cumplió sus 30 días: para volver a las búsquedas hay que renovarlo.", "info");
+      else toast("Cantidad actualizada.");
     },
     [cambiar, toast],
   );
@@ -242,7 +256,7 @@ function useStoreValue() {
 
   // ---------- créditos y pagos ----------
   const comprar = useCallback(
-    async (paqueteId: string, metodo: MetodoPago): Promise<Pago> => {
+    async (paqueteId: string, metodo: MetodoPago, factura?: { rfc: string; razon: string }): Promise<Pago> => {
       await wait(metodo === "tarjeta" ? 1400 : 900);
       const d0 = dbRef.current!;
       const pq = d0.paquetes.find((p) => p.id === paqueteId)!;
@@ -250,6 +264,7 @@ function useStoreValue() {
       const referencia = metodo === "oxxo" ? `9301 ${String(4000 + d0.seq).padStart(4, "0")} 5512 ${String(1000 + (d0.seq % 9000)).padStart(4, "0")}` : metodo === "spei" ? `646180${String(1576000000 + d0.seq)}` : undefined;
       const estado: Pago["estado"] = metodo === "tarjeta" ? "pagado" : "pendiente";
       const pago: Pago = { id: pagoId, usuarioId: d0.usuarioId, paqueteId, creditos: pq.creditos, monto: pq.precio, metodo, fecha: d0.hoy, estado, referencia };
+      if (factura && d0.etapa2.factura) pago.factura = { ...factura, folio: `PO-${String(d0.seq + 1).padStart(5, "0")}` };
       cambiar((d) => {
         d.seq += 1;
         d.pagos.push({ ...pago });
@@ -432,6 +447,138 @@ function useStoreValue() {
     [cambiar, toast],
   );
 
+  // ---------- marca y segunda etapa ----------
+  const guardarMarca = useCallback(
+    async (m: Marca) => {
+      await wait(600);
+      cambiar((d) => {
+        d.marca = m;
+      });
+      setTimeout(() => pulso("marca"), 50);
+      toast("Marca guardada. Ya se ve en todo el sitio, también en el celular.");
+    },
+    [cambiar, toast],
+  );
+
+  const cambiarEtapa = useCallback(
+    async (k: keyof Etapa2, on: boolean) => {
+      await wait(450);
+      cambiar((d) => {
+        d.etapa2[k] = on;
+      });
+      const nombres: Record<keyof Etapa2, string> = { destacados: "Anuncios destacados", alertas: "Alertas para compradores", calificaciones: "Calificaciones de vendedores", factura: "Factura de créditos" };
+      toast(on ? `${nombres[k]}: encendido. Ya aparece en el sitio, sin tocar lo demás.` : `${nombres[k]}: apagado.`, on ? "ok" : "info");
+    },
+    [cambiar, toast],
+  );
+
+  const destacar = useCallback(
+    async (id: string) => {
+      await wait(700);
+      const d0 = dbRef.current!;
+      if (saldo(d0, d0.usuarioId) < DESTACAR.creditos) {
+        toast(`Destacar cuesta ${DESTACAR.creditos} créditos y no le alcanzan.`, "error");
+        return false;
+      }
+      cambiar((d) => {
+        const a = d.anuncios.find((x) => x.id === id);
+        if (!a) return;
+        const desde = a.destacadoHasta && a.destacadoHasta >= d.hoy ? a.destacadoHasta : d.hoy;
+        a.destacadoHasta = sumarDias(desde, DESTACAR.dias);
+        consumir(d, d.usuarioId, DESTACAR.creditos, "destacado", `Destacó "${a.titulo}" ${DESTACAR.dias} días`, a.id);
+      });
+      pulso("credito");
+      toast(`Destacado ${DESTACAR.dias} días: sale arriba en las búsquedas de su zona.`);
+      return true;
+    },
+    [cambiar, toast],
+  );
+
+  const crearAlerta = useCallback(
+    async (termino: string, ubicacionId: string, radioKm: number, email: string) => {
+      await wait(600);
+      cambiar((d) => {
+        d.alertas.push({ id: nuevoId(d, "AL"), termino, ubicacionId, radioKm, email, fecha: d.hoy, avisos: 0 });
+      });
+      toast(`Listo. Le escribimos a ${email} cuando alguien publique "${termino}" a menos de ${radioKm} km.`);
+    },
+    [cambiar, toast],
+  );
+
+  const registrarBusquedaFallida = useCallback(
+    (termino: string, ubicacionId: string, masCercanaKm: number | null) => {
+      const t = normalizar(termino);
+      if (!t) return;
+      cambiar((d) => {
+        const x = d.busquedasFallidas.find((f) => normalizar(f.termino) === t && f.ubicacionId === ubicacionId);
+        if (x) {
+          x.veces += 1;
+          x.ultima = d.hoy;
+          x.masCercanaKm = masCercanaKm;
+        } else d.busquedasFallidas.push({ id: nuevoId(d, "BF"), termino: termino.trim(), ubicacionId, veces: 1, ultima: d.hoy, masCercanaKm });
+      });
+    },
+    [cambiar],
+  );
+
+  const calificar = useCallback(
+    async (usuarioId: string, estrellas: number) => {
+      await wait(500);
+      cambiar((d) => {
+        const u = d.usuarios.find((x) => x.id === usuarioId);
+        if (!u) return;
+        const c = u.calif ?? { suma: 0, n: 0 };
+        u.calif = { suma: c.suma + estrellas, n: c.n + 1 };
+      });
+      toast("Gracias. Su calificación ya cuenta en el promedio del vendedor.");
+    },
+    [cambiar, toast],
+  );
+
+  // Captura asistida: lotes de un vendedor publicados desde su lista, cobrando sus créditos.
+  const capturar = useCallback(
+    async (vendedorId: string, subId: string, ubicacionId: string, filas: { titulo: string; cantidad: number; unidad: string; precio: number }[]) => {
+      await wait(1100);
+      const d0 = dbRef.current!;
+      const alcanza = Math.min(filas.length, saldo(d0, vendedorId));
+      const { cat, sub } = subDe(subId, d0.categorias);
+      cambiar((d) => {
+        filas.slice(0, alcanza).forEach((f, i) => {
+          const id = `A-${++d.seq}`;
+          const a: Anuncio = {
+            id,
+            titulo: f.titulo,
+            catId: cat.id,
+            subId: sub.id,
+            campos: {},
+            condicion: "Nuevo",
+            precio: f.precio,
+            unidad: f.unidad,
+            cantidad: f.cantidad,
+            cantidadInicial: f.cantidad,
+            vendedorId,
+            ubicacionId,
+            fotos: [sub.fotos[i % sub.fotos.length] ?? sub.fotos[0]],
+            descripcion: "Capturado a partir de la lista y las fotos que mandó el vendedor por WhatsApp.",
+            publicadoEl: d.hoy,
+            venceEl: sumarDias(d.hoy, d.reglas.anuncioDias),
+            estado: "activo",
+            vistas: 0,
+            contactos: 0,
+            factura: false,
+            flete: false,
+            renovaciones: 0,
+          };
+          consumir(d, vendedorId, 1, "publicacion", `Publicado por captura asistida: "${a.titulo}"`, id);
+          d.anuncios.unshift(a);
+        });
+      });
+      pulso("publicar");
+      return { publicados: alcanza, sinCredito: filas.length - alcanza };
+    },
+    [cambiar],
+  );
+
   const reiniciar = useCallback(() => {
     const hoy = hoyCentro();
     try {
@@ -470,8 +617,15 @@ function useStoreValue() {
       agregarCampo,
       quitarCampo,
       reiniciar,
+      guardarMarca,
+      cambiarEtapa,
+      destacar,
+      crearAlerta,
+      registrarBusquedaFallida,
+      calificar,
+      capturar,
     }),
-    [db, yo, toasts, toast, cerrarToast, publicar, editarAnuncio, actualizarCantidad, renovar, cambiarEstado, eliminarAnuncio, registrarVista, registrarContacto, comprar, confirmarPago, registrar, verComo, telefonoUsado, marcarLeidos, fijarUbicacion, avanzar, guardarReglas, agregarSub, agregarCampo, quitarCampo, reiniciar],
+    [db, yo, toasts, toast, cerrarToast, publicar, editarAnuncio, actualizarCantidad, renovar, cambiarEstado, eliminarAnuncio, registrarVista, registrarContacto, comprar, confirmarPago, registrar, verComo, telefonoUsado, marcarLeidos, fijarUbicacion, avanzar, guardarReglas, agregarSub, agregarCampo, quitarCampo, reiniciar, guardarMarca, cambiarEtapa, destacar, crearAlerta, registrarBusquedaFallida, calificar, capturar],
   );
 }
 

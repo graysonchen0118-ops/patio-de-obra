@@ -168,6 +168,12 @@ export function buscar(db: Db, f: Filtros, origen: Ubicacion, radioKm: number | 
     recientes: (x: Resultado, y: Resultado) => y.a.publicadoEl.localeCompare(x.a.publicadoEl),
   }[f.orden];
   resultados.sort(orden);
+  // con destacados encendidos, lo destacado va arriba sin romper el orden del resto
+  if (db.etapa2.destacados) {
+    const arriba = resultados.filter((x) => destacadoActivo(x.a, db));
+    const resto = resultados.filter((x) => !destacadoActivo(x.a, db));
+    resultados.splice(0, resultados.length, ...arriba, ...resto);
+  }
   const otrosEstados = resultados.filter((x) => x.u.estado !== origen.estado);
   return {
     resultados,
@@ -191,4 +197,46 @@ export function cercanos(db: Db, origen: Ubicacion, n: number, excluir?: string,
     })
     .sort((x, y) => x.km - y.km)
     .slice(0, n);
+}
+
+export const destacadoActivo = (a: Anuncio, db: Db) => db.etapa2.destacados && !!a.destacadoHasta && a.destacadoHasta >= db.hoy;
+
+// ¿A qué alertas de compradores responde un anuncio nuevo? Mismo término, dentro de su radio.
+export function alertasQueCoinciden(db: Db, a: Anuncio) {
+  const t = textoAnuncio(db, a);
+  const u = ubicacion(a.ubicacionId);
+  return db.alertas.filter((al) => {
+    const { grupos } = expandir(al.termino);
+    if (!grupos.length || !grupos.every((g) => g.some((w) => t.includes(w)))) return false;
+    return distanciaKm(ubicacion(al.ubicacionId), u) <= al.radioKm;
+  });
+}
+
+// Zonas para ver qué tan lleno está el tianguis en cada una.
+export const ZONAS = [
+  { id: "valle", nombre: "Valle de México", centro: "cuauhtemoc" },
+  { id: "puebla", nombre: "Puebla y Tlaxcala", centro: "puebla" },
+  { id: "bajio", nombre: "Querétaro y Bajío", centro: "queretaro" },
+  { id: "gdl", nombre: "Guadalajara", centro: "guadalajara" },
+  { id: "mty", nombre: "Monterrey y Saltillo", centro: "monterrey" },
+  { id: "merida", nombre: "Mérida y Cancún", centro: "merida" },
+  { id: "tij", nombre: "Tijuana y Mexicali", centro: "tijuana" },
+];
+
+export function llenadoZona(db: Db, centroId: string, km = 60) {
+  const c = ubicacion(centroId);
+  const activos = db.anuncios.filter((a) => visible(a, db.hoy) && distanciaKm(c, ubicacion(a.ubicacionId)) <= km);
+  const vendedores = new Set(activos.map((a) => a.vendedorId)).size;
+  const fallidas = db.busquedasFallidas.filter((f) => distanciaKm(c, ubicacion(f.ubicacionId)) <= km).reduce((s, f) => s + f.veces, 0);
+  return { anuncios: activos.length, vendedores, fallidas };
+}
+
+export function promedio(db: Db, uid: string) {
+  const c = db.usuarios.find((u) => u.id === uid)?.calif;
+  return c && c.n ? c.suma / c.n : null;
+}
+
+// Lo que la tarjeta de un anuncio muestra según las funciones encendidas.
+export function extrasTarjeta(db: Db, a: Anuncio) {
+  return { destacado: destacadoActivo(a, db), estrellas: db.etapa2.calificaciones ? promedio(db, a.vendedorId) : null };
 }

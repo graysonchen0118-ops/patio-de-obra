@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { ESTADOS_CONTORNO } from "@/lib/mexico";
-import { montar, damp } from "./kit";
+import { montar, damp, acento } from "./kit";
 
 // México en relieve, estado por estado. El comprador es el pin oscuro; el disco es el radio
 // de búsqueda y crece de 10 km a todo el país. Los anuncios dentro del radio se levantan.
@@ -93,8 +93,8 @@ export default function MapScene(props: MapProps) {
     scene.add(lineas);
 
     // disco de radio
-    const disco = new THREE.Mesh(track(new THREE.CircleGeometry(1, 128).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0xb5452b, transparent: true, opacity: 0.14, depthWrite: false }));
-    const borde = new THREE.Mesh(track(new THREE.RingGeometry(0.985, 1, 160).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0xb5452b, transparent: true, opacity: 0.9, depthWrite: false }));
+    const disco = new THREE.Mesh(track(new THREE.CircleGeometry(1, 128).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: acento(), transparent: true, opacity: 0.14, depthWrite: false }));
+    const borde = new THREE.Mesh(track(new THREE.RingGeometry(0.985, 1, 160).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: acento(), transparent: true, opacity: 0.9, depthWrite: false }));
     disco.position.y = borde.position.y = ALTO + 0.006;
     scene.add(disco, borde);
     const onda = new THREE.Mesh(track(new THREE.RingGeometry(0.97, 1, 128).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0x1e3c49, transparent: true, opacity: 0.6, depthWrite: false }));
@@ -114,7 +114,7 @@ export default function MapScene(props: MapProps) {
     const pinMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     let pines: THREE.InstancedMesh | null = null;
     let estadoPines: { id: string; x: number; z: number; dentro: boolean; s: number; h: number }[] = [];
-    const cDentro = new THREE.Color(0xb5452b);
+    const cDentro = acento();
     const cFuera = new THREE.Color(0x97a2a8);
     const cSel = new THREE.Color(0x1e3c49);
     const tmp = new THREE.Color();
@@ -181,6 +181,14 @@ export default function MapScene(props: MapProps) {
     };
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("click", onClick);
+    const onMarca = (e: Event) => {
+      if ((e as CustomEvent).detail !== "marca") return;
+      const c = acento();
+      cDentro.copy(c);
+      (disco.material as THREE.MeshBasicMaterial).color.copy(c);
+      (borde.material as THREE.MeshBasicMaterial).color.copy(c);
+    };
+    window.addEventListener("patio:pulso", onMarca);
 
     const m4 = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -241,6 +249,7 @@ export default function MapScene(props: MapProps) {
     return () => {
       renderer.domElement.removeEventListener("pointermove", onMove);
       renderer.domElement.removeEventListener("click", onClick);
+      window.removeEventListener("patio:pulso", onMarca);
       if (pines) pines.dispose();
       aplicar.current = null;
       k.dispose();
